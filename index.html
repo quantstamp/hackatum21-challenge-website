@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Quantstamp HackaTUM Challenge Leaderboard</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+  <script src="bundle.js"></script>
+  <script src="configs.js"></script>
+</head>
+<body>
+    <div id="testcontainer"></div>
+    <div class="jumbotron text-center">
+        <h3>Quantstamp HackaTUM'21 Challenge Leaderboard</h3>
+        <!-- <p>Resize this responsive page to see the effect!</p>  -->
+      </div>
+        
+    <div class="table-responsive">
+        <table id="leaderboard-table" class="table table-striped table-light border-light">
+        <thead>
+            <tr>
+            <th scope="col">#</th>
+            <th scope="col">Team</th>
+            <th scope="col">Protected (HAK)</th>
+            <th scope="col">Pwned (HAK)</th>
+            <th scope="col">Sum (HAK)</th>
+            </tr>
+        </thead>
+        </table>
+    </div>
+    <script>
+         //returns a promise object
+        function getBalance(token, wallet){
+            walletBalance = lib.getBalance(token,wallet);
+            return walletBalance;
+        }
+        //returns contestants list as a promise object
+        function populateContestantBalances(items){
+            return new Promise((resolve,reject)=>{
+                let leaderBoard = []
+                var i = 0;
+                for (const item of items) {
+                    getBalance(TOKEN_ADDRESS,item.bank).then(bankBalance=>{
+                        let protectedBalance = bankBalance;
+                        getBalance(TOKEN_ADDRESS,item.wallet).then(walletBalance=>{
+                            let pwnBalance = walletBalance;
+                            const sumScore =bankBalance+walletBalance;
+                            const contestant = {name:item.name, wallet: item.wallet, bank: item.bank, 
+                                protectedBalance:protectedBalance, pwnBalance:pwnBalance, sum:sumScore};
+                            leaderBoard.push(contestant);
+                            ++i;
+                            if (i==items.length) {
+                                resolve(leaderBoard);
+                            }
+                        });
+                    });
+                }
+            })
+        }
+        //write the table rows
+        function loadTableData(items, tableElement) {
+            const table = document.getElementById(tableElement);
+            let rank = 1;
+            items.forEach( async item => {
+                let row = table.insertRow();
+                let rankCell = row.insertCell(0);
+                rankCell.innerHTML = rank++;
+                let nameCell = row.insertCell(1);
+                nameCell.innerHTML = item.name;
+                let protectedBalanceCell = row.insertCell(2);
+                protectedBalanceCell.innerHTML= item.protectedBalance;
+                let pwnBalanceCell = row.insertCell(3);
+                pwnBalanceCell.innerHTML = item.pwnBalance;
+                let sumBalanceCell = row.insertCell(4);
+                sumBalanceCell.innerHTML = item.sum;
+            });
+        }
+
+        populateContestantBalances(TEAMS).then( contestants => {
+            const rankedContestant = contestants.sort(function(a, b) {
+                return parseFloat(a.sum) - parseFloat(b.sum);
+            });
+            loadTableData(rankedContestant,"leaderboard-table"); //set in configs.js   
+        });
+    </script>
+</body>
+</html>
