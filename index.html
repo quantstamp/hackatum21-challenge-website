@@ -27,6 +27,8 @@
             <th scope="col">Protected (HAK)</th>
             <th scope="col">Pwned (HAK)</th>
             <th scope="col">Sum (HAK)</th>
+            <th scope="col">Failed tests</th>
+            <th scope="col">Score (Sum / Failed tests+1)</th>
             </tr>
         </thead>
         </table>
@@ -47,9 +49,12 @@
                         let protectedBalance = bankBalance;
                         getBalance(TOKEN_ADDRESS,item.wallet).then(walletBalance=>{
                             let pwnBalance = walletBalance;
-                            const sumScore =bankBalance+walletBalance;
+                            const sumBalances = bankBalance+walletBalance;
+                            const failedTests = item.failed_tests;
+                            const scoreContestant = sumBalances / (failedTests+1);
                             const contestant = {name:item.name, wallet: item.wallet, bank: item.bank, 
-                                protectedBalance:protectedBalance, pwnBalance:pwnBalance, sum:sumScore};
+                                protectedBalance:protectedBalance, pwnBalance:pwnBalance, sum:sumBalances,
+                                failed_tests:failedTests, score:scoreContestant};
                             leaderBoard.push(contestant);
                             ++i;
                             if (i==items.length) {
@@ -76,12 +81,16 @@
                 pwnBalanceCell.innerHTML = item.pwnBalance;
                 let sumBalanceCell = row.insertCell(4);
                 sumBalanceCell.innerHTML = item.sum;
+                let failedTestsCell = row.insertCell(5);
+                failedTestsCell.innerHTML = item.failed_tests;
+                let scoreCell = row.insertCell(6);
+                scoreCell.innerHTML = item.score;
             });
         }
 
         populateContestantBalances(TEAMS).then( contestants => {
             const rankedContestant = contestants.sort(function(a, b) {
-                return parseFloat(a.sum) - parseFloat(b.sum);
+                return parseFloat(b.score) - parseFloat(a.score);
             });
             loadTableData(rankedContestant,"leaderboard-table"); //set in configs.js   
         });
