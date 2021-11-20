@@ -24,7 +24,9 @@
             <tr>
             <th scope="col">#</th>
             <th scope="col">Team</th>
+            <th scope="col">Bank</th>
             <th scope="col">Protected (HAK)</th>
+            <th scope="col">Attack wallet</th>
             <th scope="col">Pwned (HAK)</th>
             <th scope="col">Sum (HAK)</th>
             <th scope="col">Failed tests</th>
@@ -70,20 +72,32 @@
             const table = document.getElementById(tableElement);
             let rank = 1;
             items.forEach( async item => {
+                // <th scope="col">Team</th>
+                // <th scope="col">Bank</th>
+                // <th scope="col">Protected (HAK)</th>
+                // <th scope="col">Attack wallet</th>
+                // <th scope="col">Pwned (HAK)</th>
+                // <th scope="col">Sum (HAK)</th>
+                // <th scope="col">Failed tests</th>
+                // <th scope="col">Score (Sum / Failed tests+1)</th>
                 let row = table.insertRow();
                 let rankCell = row.insertCell(0);
                 rankCell.innerHTML = rank++;
                 let nameCell = row.insertCell(1);
                 nameCell.innerHTML = item.name;
-                let protectedBalanceCell = row.insertCell(2);
+                let bankCell = row.insertCell(2);
+                bankCell.innerHTML = item.bank;
+                let protectedBalanceCell = row.insertCell(3);
                 protectedBalanceCell.innerHTML= item.protectedBalance;
-                let pwnBalanceCell = row.insertCell(3);
+                let walletCell = row.insertCell(4);
+                walletCell.innerHTML = item.wallet;
+                let pwnBalanceCell = row.insertCell(5);
                 pwnBalanceCell.innerHTML = item.pwnBalance;
-                let sumBalanceCell = row.insertCell(4);
+                let sumBalanceCell = row.insertCell(6);
                 sumBalanceCell.innerHTML = item.sum;
-                let failedTestsCell = row.insertCell(5);
+                let failedTestsCell = row.insertCell(7);
                 failedTestsCell.innerHTML = item.failed_tests;
-                let scoreCell = row.insertCell(6);
+                let scoreCell = row.insertCell(8);
                 scoreCell.innerHTML = item.score;
             });
         }

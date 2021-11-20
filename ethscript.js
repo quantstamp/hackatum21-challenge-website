@@ -1,5 +1,5 @@
 const Web3 = require('web3');
-const web3 = new Web3("https://ropsten.infura.io/v3/ad69d756c7df4e1986f5294276b12cdb");
+const web3 = new Web3("https://eth-goerli.alchemyapi.io/v2/vGpsCOc1T8HsIyv2A73j6XyFQs98ftBi");
 // The minimum ABI to get ERC20 Token balance
 let minABI = [
     // balanceOf
