@@ -1,6 +1,6 @@
 (function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.lib = f()}})(function(){var define,module,exports;return (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
 const Web3 = require('web3');
-const web3 = new Web3("https://ropsten.infura.io/v3/ad69d756c7df4e1986f5294276b12cdb");
+const web3 = new Web3("https://eth-goerli.alchemyapi.io/v2/vGpsCOc1T8HsIyv2A73j6XyFQs98ftBi");
 // The minimum ABI to get ERC20 Token balance
 let minABI = [
     // balanceOf
@@ -14816,8 +14816,8 @@ var TransactionFactory = /** @class */ (function () {
 }());
 exports.default = TransactionFactory;
 
-}).call(this)}).call(this,{"isBuffer":require("../../../../../../../../../usr/local/lib/node_modules/browserify/node_modules/is-buffer/index.js")})
-},{".":47,"../../../../../../../../../usr/local/lib/node_modules/browserify/node_modules/is-buffer/index.js":605,"ethereumjs-util":237}],50:[function(require,module,exports){
+}).call(this)}).call(this,{"isBuffer":require("../../../../../../../../usr/local/lib/node_modules/browserify/node_modules/is-buffer/index.js")})
+},{".":47,"../../../../../../../../usr/local/lib/node_modules/browserify/node_modules/is-buffer/index.js":605,"ethereumjs-util":237}],50:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.N_DIV_2 = exports.isAccessList = exports.isAccessListBuffer = exports.Capability = void 0;
@@ -44640,8 +44640,8 @@ var assertIsString = function (input) {
 };
 exports.assertIsString = assertIsString;
 
-}).call(this)}).call(this,{"isBuffer":require("../../../../../../../../usr/local/lib/node_modules/browserify/node_modules/is-buffer/index.js")})
-},{"../../../../../../../../usr/local/lib/node_modules/browserify/node_modules/is-buffer/index.js":605,"./internal":238}],237:[function(require,module,exports){
+}).call(this)}).call(this,{"isBuffer":require("../../../../../../../usr/local/lib/node_modules/browserify/node_modules/is-buffer/index.js")})
+},{"../../../../../../../usr/local/lib/node_modules/browserify/node_modules/is-buffer/index.js":605,"./internal":238}],237:[function(require,module,exports){
 "use strict";
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
@@ -64579,6 +64579,8 @@ var outputBlockFormatter = function (block) {
     }
     if (block.miner)
         block.miner = utils.toChecksumAddress(block.miner);
+    if (block.baseFeePerGas)
+        block.baseFeePerGas = utils.hexToNumber(block.baseFeePerGas);
     return block;
 };
 /**
@@ -64821,6 +64823,7 @@ var Method = function Method(options) {
     this.transactionBlockTimeout = options.transactionBlockTimeout || 50;
     this.transactionConfirmationBlocks = options.transactionConfirmationBlocks || 24;
     this.transactionPollingTimeout = options.transactionPollingTimeout || 750;
+    this.blockHeaderTimeout = options.blockHeaderTimeout || 10; // 10 seconds
     this.defaultCommon = options.defaultCommon;
     this.defaultChain = options.defaultChain;
     this.defaultHardfork = options.defaultHardfork;
@@ -64943,7 +64946,7 @@ Method.prototype.toPayload = function (args) {
     return payload;
 };
 Method.prototype._confirmTransaction = function (defer, result, payload) {
-    var method = this, promiseResolved = false, canUnsubscribe = true, timeoutCount = 0, confirmationCount = 0, intervalId = null, lastBlock = null, receiptJSON = '', gasProvided = ((!!payload.params[0] && typeof payload.params[0] === 'object') && payload.params[0].gas) ? payload.params[0].gas : null, isContractDeployment = (!!payload.params[0] && typeof payload.params[0] === 'object') &&
+    var method = this, promiseResolved = false, canUnsubscribe = true, timeoutCount = 0, confirmationCount = 0, intervalId = null, blockHeaderTimeoutId = null, lastBlock = null, receiptJSON = '', gasProvided = ((!!payload.params[0] && typeof payload.params[0] === 'object') && payload.params[0].gas) ? payload.params[0].gas : null, isContractDeployment = (!!payload.params[0] && typeof payload.params[0] === 'object') &&
         payload.params[0].data &&
         payload.params[0].from &&
         !payload.params[0].to, hasBytecode = isContractDeployment && payload.params[0].data.length > 2;
@@ -65004,6 +65007,7 @@ Method.prototype._confirmTransaction = function (defer, result, payload) {
                 sub = {
                     unsubscribe: function () {
                         clearInterval(intervalId);
+                        clearTimeout(blockHeaderTimeoutId);
                     }
                 };
             }
@@ -65210,23 +65214,29 @@ Method.prototype._confirmTransaction = function (defer, result, payload) {
     };
     // start watching for confirmation depending on the support features of the provider
     var startWatching = function (existingReceipt) {
+        let blockHeaderArrived = false;
         const startInterval = () => {
             intervalId = setInterval(checkConfirmation.bind(null, existingReceipt, true), 1000);
         };
+        // If provider do not support event subscription use polling
         if (!this.requestManager.provider.on) {
-            startInterval();
+            return startInterval();
         }
-        else {
-            _ethereumCall.subscribe('newBlockHeaders', function (err, blockHeader, sub) {
-                if (err || !blockHeader) {
-                    // fall back to polling
-                    startInterval();
-                }
-                else {
-                    checkConfirmation(existingReceipt, false, err, blockHeader, sub);
-                }
-            });
-        }
+        // Subscribe to new block headers to look for tx receipt
+        _ethereumCall.subscribe('newBlockHeaders', function (err, blockHeader, sub) {
+            blockHeaderArrived = true;
+            if (err || !blockHeader) {
+                // fall back to polling
+                return startInterval();
+            }
+            checkConfirmation(existingReceipt, false, err, blockHeader, sub);
+        });
+        // Fallback to polling if tx receipt didn't arrived in "blockHeaderTimeout" [10 seconds]
+        blockHeaderTimeoutId = setTimeout(() => {
+            if (!blockHeaderArrived) {
+                startInterval();
+            }
+        }, this.blockHeaderTimeout * 1000);
     }.bind(this);
     // first check if we already have a confirmed transaction
     _ethereumCall.getTransactionReceipt(result)
@@ -66451,7 +66461,6 @@ Subscription.prototype.subscribe = function () {
         if (!err && result) {
             _this.id = result;
             _this.method = payload.params[0];
-            _this.emit('connected', result);
             // call callback on notifications
             _this.options.requestManager.addSubscription(_this, function (error, result) {
                 if (!error) {
@@ -66477,6 +66486,7 @@ Subscription.prototype.subscribe = function () {
                     _this.emit('error', error);
                 }
             });
+            _this.emit('connected', result);
         }
         else {
             setTimeout(function () {
@@ -67042,6 +67052,9 @@ var ethereumjsUtil = require('ethereumjs-util');
 var isNot = function (value) {
     return (typeof value === 'undefined') || value === null;
 };
+var isExist = function (value) {
+    return (typeof value !== 'undefined') && value !== null;
+};
 var Accounts = function Accounts() {
     var _this = this;
     // sets _requestmanager
@@ -67136,6 +67149,21 @@ Accounts.prototype.signTransaction = function signTransaction(tx, privateKey, ca
         callback(error);
         return Promise.reject(error);
     }
+    if (isExist(tx.common) && isNot(tx.common.customChain)) {
+        error = new Error('If tx.common is provided it must have tx.common.customChain');
+        callback(error);
+        return Promise.reject(error);
+    }
+    if (isExist(tx.common) && isNot(tx.common.customChain.chainId)) {
+        error = new Error('If tx.common is provided it must have tx.common.customChain and tx.common.customChain.chainId');
+        callback(error);
+        return Promise.reject(error);
+    }
+    if (isExist(tx.common) && isExist(tx.common.customChain.chainId) && isExist(tx.chainId) && tx.chainId !== tx.common.customChain.chainId) {
+        error = new Error('Chain Id doesnt match in tx.chainId tx.common.customChain.chainId');
+        callback(error);
+        return Promise.reject(error);
+    }
     function signed(tx) {
         const error = _validateTransactionForSigning(tx);
         if (error) {
@@ -67220,20 +67248,23 @@ Accounts.prototype.signTransaction = function signTransaction(tx, privateKey, ca
     }
     // Otherwise, get the missing info from the Ethereum Node
     return Promise.all([
-        isNot(tx.chainId) ? _this._ethereumCall.getChainId() : tx.chainId,
+        ((isNot(tx.common) || isNot(tx.common.customChain.chainId)) ? //tx.common.customChain.chainId is not optional inside tx.common if tx.common is provided
+            (isNot(tx.chainId) ? _this._ethereumCall.getChainId() : tx.chainId)
+            : undefined),
         isNot(tx.nonce) ? _this._ethereumCall.getTransactionCount(_this.privateKeyToAccount(privateKey).address) : tx.nonce,
         isNot(hasTxSigningOptions) ? _this._ethereumCall.getNetworkId() : 1,
         _handleTxPricing(_this, tx)
     ]).then(function (args) {
-        if (isNot(args[0]) || isNot(args[1]) || isNot(args[2]) || isNot(args[3])) {
+        const [txchainId, txnonce, txnetworkId, txgasInfo] = args;
+        if ((isNot(txchainId) && isNot(tx.common) && isNot(tx.common.customChain.chainId)) || isNot(txnonce) || isNot(txnetworkId) || isNot(txgasInfo)) {
             throw new Error('One of the values "chainId", "networkId", "gasPrice", or "nonce" couldn\'t be fetched: ' + JSON.stringify(args));
         }
         return signed({
             ...tx,
-            chainId: args[0],
-            nonce: args[1],
-            networkId: args[2],
-            ...args[3] // Will either be gasPrice or maxFeePerGas and maxPriorityFeePerGas
+            ...((isNot(tx.common) || isNot(tx.common.customChain.chainId)) ? { chainId: txchainId } : {}),
+            nonce: txnonce,
+            networkId: txnetworkId,
+            ...txgasInfo // Will either be gasPrice or maxFeePerGas and maxPriorityFeePerGas
         });
     });
 };
@@ -68770,6 +68801,18 @@ var Contract = function Contract(jsonInterface, address, options) {
         },
         enumerable: true
     });
+    Object.defineProperty(this, 'blockHeaderTimeout', {
+        get: function () {
+            if (_this.options.blockHeaderTimeout === 0) {
+                return _this.options.blockHeaderTimeout;
+            }
+            return _this.options.blockHeaderTimeout || this.constructor.blockHeaderTimeout;
+        },
+        set: function (val) {
+            _this.options.blockHeaderTimeout = val;
+        },
+        enumerable: true
+    });
     Object.defineProperty(this, 'defaultAccount', {
         get: function () {
             return defaultAccount;
@@ -69213,6 +69256,7 @@ Contract.prototype._createTxObject = function _createTxObject() {
     txObject.send.request = this.parent._executeMethod.bind(txObject, 'send', true); // to make batch requests
     txObject.encodeABI = this.parent._encodeMethodABI.bind(txObject);
     txObject.estimateGas = this.parent._executeMethod.bind(txObject, 'estimate');
+    txObject.createAccessList = this.parent._executeMethod.bind(txObject, 'createAccessList');
     if (args && this.method.inputs && args.length !== this.method.inputs.length) {
         if (this.nextMethod) {
             return this.nextMethod.apply(null, args);
@@ -69285,6 +69329,22 @@ Contract.prototype._executeMethod = function _executeMethod() {
         return payload;
     }
     switch (args.type) {
+        case 'createAccessList':
+            // return error, if no "from" is specified
+            if (!utils.isAddress(args.options.from)) {
+                return utils._fireError(errors.ContractNoFromAddressDefinedError(), defer.eventEmitter, defer.reject, args.callback);
+            }
+            var createAccessList = (new Method({
+                name: 'createAccessList',
+                call: 'eth_createAccessList',
+                params: 2,
+                inputFormatter: [formatters.inputTransactionFormatter, formatters.inputDefaultBlockNumberFormatter],
+                requestManager: _this._parent._requestManager,
+                accounts: ethAccounts,
+                defaultAccount: _this._parent.defaultAccount,
+                defaultBlock: _this._parent.defaultBlock
+            })).createFunction();
+            return createAccessList(args.options, args.callback);
         case 'estimate':
             var estimateGas = (new Method({
                 name: 'estimateGas',
@@ -72083,6 +72143,7 @@ var Eth = function Eth() {
     var transactionBlockTimeout = 50;
     var transactionConfirmationBlocks = 24;
     var transactionPollingTimeout = 750;
+    var blockHeaderTimeout = 10; // 10 seconds
     var maxListenersWarningThreshold = 100;
     var defaultChain, defaultHardfork, defaultCommon;
     Object.defineProperty(this, 'handleRevert', {
@@ -72190,6 +72251,21 @@ var Eth = function Eth() {
         },
         enumerable: true
     });
+    Object.defineProperty(this, 'blockHeaderTimeout', {
+        get: function () {
+            return blockHeaderTimeout;
+        },
+        set: function (val) {
+            blockHeaderTimeout = val;
+            // also set on the Contract object
+            _this.Contract.blockHeaderTimeout = blockHeaderTimeout;
+            // update defaultBlock
+            methods.forEach(function (method) {
+                method.blockHeaderTimeout = blockHeaderTimeout;
+            });
+        },
+        enumerable: true
+    });
     Object.defineProperty(this, 'defaultAccount', {
         get: function () {
             return defaultAccount;
@@ -72284,6 +72360,7 @@ var Eth = function Eth() {
     this.Contract.transactionBlockTimeout = this.transactionBlockTimeout;
     this.Contract.transactionConfirmationBlocks = this.transactionConfirmationBlocks;
     this.Contract.transactionPollingTimeout = this.transactionPollingTimeout;
+    this.Contract.blockHeaderTimeout = this.blockHeaderTimeout;
     this.Contract.handleRevert = this.handleRevert;
     this.Contract._requestManager = this._requestManager;
     this.Contract._ethAccounts = this.accounts;
@@ -72336,7 +72413,7 @@ var Eth = function Eth() {
             name: 'getFeeHistory',
             call: 'eth_feeHistory',
             params: 3,
-            inputFormatter: [utils.toNumber, formatter.inputBlockNumberFormatter, null]
+            inputFormatter: [utils.numberToHex, formatter.inputBlockNumberFormatter, null]
         }),
         new Method({
             name: 'getAccounts',
@@ -72510,6 +72587,12 @@ var Eth = function Eth() {
             call: 'eth_pendingTransactions',
             params: 0,
             outputFormatter: formatter.outputTransactionFormatter
+        }),
+        new Method({
+            name: 'createAccessList',
+            call: 'eth_createAccessList',
+            params: 2,
+            inputFormatter: [formatter.inputTransactionFormatter, formatter.inputDefaultBlockNumberFormatter],
         }),
         // subscriptions
         new Subscriptions({
@@ -74853,7 +74936,7 @@ module.exports = Web3;
 },{"../package.json":438,"web3-bzz":385,"web3-core":398,"web3-eth":426,"web3-eth-personal":424,"web3-net":427,"web3-shh":432,"web3-utils":433}],438:[function(require,module,exports){
 module.exports={
     "name": "web3",
-    "version": "1.6.0",
+    "version": "1.6.1",
     "description": "Ethereum JavaScript API",
     "repository": "https://github.com/ethereum/web3.js",
     "license": "LGPL-3.0",
@@ -74903,21 +74986,21 @@ module.exports={
         }
     ],
     "dependencies": {
-        "web3-bzz": "1.6.0",
-        "web3-core": "1.6.0",
-        "web3-eth": "1.6.0",
-        "web3-eth-personal": "1.6.0",
-        "web3-net": "1.6.0",
-        "web3-shh": "1.6.0",
-        "web3-utils": "1.6.0"
+        "web3-bzz": "1.6.1",
+        "web3-core": "1.6.1",
+        "web3-eth": "1.6.1",
+        "web3-eth-personal": "1.6.1",
+        "web3-net": "1.6.1",
+        "web3-shh": "1.6.1",
+        "web3-utils": "1.6.1"
     },
     "devDependencies": {
         "@types/node": "^12.12.6",
         "dtslint": "^3.4.1",
         "typescript": "^3.9.5",
-        "web3-core-helpers": "1.6.0"
+        "web3-core-helpers": "1.6.1"
     },
-    "gitHead": "a34afae56647615d7cbdfa227af8a1389476e2d6"
+    "gitHead": "3299240587db8dc3f0b2fc27aa973d218a83265b"
 }
 
 },{}],439:[function(require,module,exports){
