@@ -92,7 +92,7 @@ const TEAMS = [
 
     {name:"Quantstamp challenge winners", 
     wallet:"0x7c9d2E0931072d3861CB5EE45EdF8a05bF15F156", 
-    bank:"0xdB26d65919B51842596B90c70e7aDd0384384D6b",
+    bank:"0xa53a3B4d489CaCe307555633C6FD13fcfC7F5908",
     failed_tests:0},
 
     {name:"xx360noscope", 
