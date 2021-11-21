@@ -30,7 +30,8 @@
             <th scope="col">Pwned (HAK)</th>
             <th scope="col">Sum (HAK)</th>
             <th scope="col">Failed tests</th>
-            <th scope="col">Score (Sum / Failed tests+1)</th>
+            <th scope="col">Delay penalty</th>
+            <th scope="col">Score: Sum / ((Failed tests+1) * (Delay+1))</th>
             </tr>
         </thead>
         </table>
@@ -53,10 +54,10 @@
                             let pwnBalance = walletBalance;
                             const sumBalances = bankBalance+walletBalance;
                             const failedTests = item.failed_tests;
-                            const scoreContestant = sumBalances / (failedTests+1);
+                            const scoreContestant = sumBalances / ((failedTests+1)* (item.delay+1));
                             const contestant = {name:item.name, wallet: item.wallet, bank: item.bank, 
                                 protectedBalance:protectedBalance, pwnBalance:pwnBalance, sum:sumBalances,
-                                failed_tests:failedTests, score:scoreContestant};
+                                failed_tests:failedTests, delay:item.delay, score:scoreContestant};
                             leaderBoard.push(contestant);
                             ++i;
                             if (i==items.length) {
@@ -79,6 +80,7 @@
                 // <th scope="col">Pwned (HAK)</th>
                 // <th scope="col">Sum (HAK)</th>
                 // <th scope="col">Failed tests</th>
+                // <th scope="col">Delay</th>
                 // <th scope="col">Score (Sum / Failed tests+1)</th>
                 let row = table.insertRow();
                 let rankCell = row.insertCell(0);
@@ -97,7 +99,9 @@
                 sumBalanceCell.innerHTML = item.sum;
                 let failedTestsCell = row.insertCell(7);
                 failedTestsCell.innerHTML = item.failed_tests;
-                let scoreCell = row.insertCell(8);
+                let delayCell = row.insertCell(8);
+                delayCell.innerHTML = item.delay;
+                let scoreCell = row.insertCell(9);
                 scoreCell.innerHTML = item.score;
             });
         }
